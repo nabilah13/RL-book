@@ -100,7 +100,7 @@ for i in range(100):
 # Prob of winning (term state) is 1 minus sum of probs on non-term states
 transition_matrix[:,-1] = 1 - np.sum(transition_matrix[:, :-1], axis=1)
 # Create mapping for the ladders and snakes
-ls_dict = {1:38, 4:14, 8:10, 21:42, 
+ls_dict = {1:38, 4:14, 8:30, 21:42, 
     28:76, 50:67, 71:92, 80:99,
     97:78, 95:56, 88:24, 62:18, 48:26, 
     36:6, 32:10}
@@ -121,7 +121,7 @@ Done in code.
 \includegraphics[scale=0.8]{times_to_finish.png}
 % Question 1(e)
 \newquestion{1(e)}
-The expected number of rolls to finish the game from the beginning is 34.0339. To calculate this number, we set up a reward function which just deterministically returns 1 for every non-terminal state. We also set gamma to 1.0. This allows us to count the time-steps.
+The expected number of rolls to finish the game from the beginning is 34.02594349895675. To calculate this number, we set up a reward function which just deterministically returns 1 for every non-terminal state. We also set gamma to 1.0. This allows us to count the time-steps.
 
 \newpage
 
@@ -173,5 +173,27 @@ $$\text{E}(y_n) = \frac{1}{n+1} + \sum_{j=0}^{n-1} \frac{1}{j+1}$$
 $$\text{E}(y_n) = \sum_{j=0}^{n} \frac{1}{j+1}$$
 
 Thus we prove the closed form solution by induction.
+
+
+% Question 3
+\newquestion{3}
+We set up the MDP Bellman Optimality Equation:
+$$V^{*}(s) = \text{max}_{a \in A}(R(s,a) + 0.5 \sum_{s' \in S} P(s, a, s')V^{*}(s')$$
+Now we recognize two facts. Firstly, $P(s, a, s')>0$ only if $s'=s$ or
+$s'=s+1$. Next, we realize $R(s,a)$ and $P(s, a, s+1)$ are the same regardless of $s$. 
+This also means that $V^{*}(s) = V^{*}(s')$ for any pairs of $s$ and $s'$. 
+
+$$V^{*}(s) = \text{max}_{a \in A}(a(1-a)+(1-a)(1+a) + 0.5(aV^{*}(s)+(1-a)V^{*}(s)))$$
+$$V^{*}(s) = 2 \text{max}_{a \in A}(1-a-2a^2)$$
+Taking a derivative to maximize this:
+$$1-4a = 0$$
+$$a=0.25$$
+Plugging back in for $V^{*}(s)$:
+$$V^{*}(s) = 2 * (1+0.25-2(0.25)^2)$$
+$$V^{*}(s) = 2 * (1.125)$$
+$$V^{*}(s) = 2.25$$
+
+So the optimal deterministic policy is to set $a=0.25$ which yields an optimal
+value function of $V^{*}(s)=2.25$. 
 
 \end{document}

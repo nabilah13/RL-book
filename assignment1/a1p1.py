@@ -13,7 +13,7 @@ for i in range(100):
 # Prob of winning (term state) is 1 minus sum of probs on non-term states
 transition_matrix[:,-1] = 1 - np.sum(transition_matrix[:, :-1], axis=1)
 # Create mapping for the ladders and snakes
-ls_dict = {1:38, 4:14, 8:10, 21:42, 
+ls_dict = {1:38, 4:14, 8:30, 21:42, 
     28:76, 50:67, 71:92, 80:99,
     97:78, 95:56, 88:24, 62:18, 48:26, 
     36:6, 32:10}

@@ -1,4 +1,3 @@
-
 import operator
 from typing import Mapping, Iterator, TypeVar, Tuple, Iterator, TypeVar
 

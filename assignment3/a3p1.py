@@ -1,21 +1,22 @@
 
 import operator
-from typing import Mapping, Iterator, TypeVar, Tuple, Dict, Iterable, Iterator, TypeVar, Callable
+from typing import Mapping, Iterator, TypeVar, Tuple, Iterator, TypeVar
 
 import numpy as np
-from rl.approximate_dynamic_programming import ValueFunctionApprox, evaluate_mrp, value_iteration, value_iteration_finite, extended_vf
+from rl.approximate_dynamic_programming import (ValueFunctionApprox, 
+                                                evaluate_mrp, 
+                                                value_iteration, 
+                                                value_iteration_finite, 
+                                                extended_vf)
 
-from rl.distribution import Categorical, Choose
+from rl.distribution import Categorical
 from rl.dynamic_programming import policy_iteration
 from rl.function_approx import Tabular
-from rl.iterate import converged, iterate
-from rl.markov_process import NonTerminal, State
+from rl.iterate import iterate
+from rl.markov_process import NonTerminal
 from rl.markov_decision_process import (FiniteMarkovDecisionProcess,
-                                        FiniteMarkovRewardProcess,
                                         MarkovRewardProcess)
-from rl.policy import FinitePolicy, FiniteDeterministicPolicy, Policy, DeterministicPolicy
-
-from rl.monte_carlo import greedy_policy_from_qvf
+from rl.policy import FinitePolicy, Policy, DeterministicPolicy
 
 A = TypeVar('A')
 S = TypeVar('S')
@@ -129,7 +130,8 @@ def approximate_policy_iteration(
         policy_vf_approx_itr = evaluate_mrp(mrp, gamma, vf_approx, 
                                         non_terminal_states_distribution = nt_states_distribution,
                                         num_state_samples=num_state_samples)
-        for _ in range(1):
+        # Better way to do this would be iterate until convergence
+        for _ in range(15):
             next(policy_vf_approx_itr)
         policy_vf_approx = next(policy_vf_approx_itr)
         

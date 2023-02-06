@@ -9,13 +9,15 @@ from rl.approximate_dynamic_programming import (ValueFunctionApprox,
                                                 extended_vf)
 
 from rl.distribution import Categorical
-from rl.dynamic_programming import policy_iteration
-from rl.function_approx import Tabular
+from rl.dynamic_programming import policy_iteration, policy_iteration_result
+from rl.function_approx import Dynamic, Tabular
 from rl.iterate import iterate
 from rl.markov_process import NonTerminal
 from rl.markov_decision_process import (FiniteMarkovDecisionProcess,
                                         MarkovRewardProcess)
 from rl.policy import FinitePolicy, Policy, DeterministicPolicy
+
+from rl.iterate import converged
 
 A = TypeVar('A')
 S = TypeVar('S')
@@ -73,32 +75,35 @@ wage_mdp = FiniteMarkovDecisionProcess(state_to_action_dict_dict)
 print(wage_mdp)
 
 # Use the policy iteration function from dynamic_programming.py
-# Iterate 50 times and see the result
-policy_itr = policy_iteration(wage_mdp, discount_factor)
-for _ in range(50):
-    next(policy_itr)
+policy_itr = policy_iteration_result(wage_mdp, discount_factor)
 print("Answer from policy_iteration in dynamic_programming.py")
-print(next(policy_itr))
+print(policy_itr)
     
-
-vf_approx = Tabular()
+vf_approx = Dynamic({s: 0.0 for s in wage_mdp.non_terminal_states})
+vf_approx_tabular = Tabular(values_map={s: 0.0 for s in wage_mdp.non_terminal_states},
+                            count_to_weight_func=lambda x:1)
 nt_state_uniform_dist = Categorical({s: 1 for s in wage_mdp.non_terminal_states})
 
-value_itr = value_iteration(wage_mdp, discount_factor, Tabular(), nt_state_uniform_dist, 1)
-for _ in range(10000):
-    next(value_itr)
+# Use the value iteration function from approximate_dynamic_programming.py
+value_itr = converged(value_iteration(wage_mdp, discount_factor, vf_approx_tabular, nt_state_uniform_dist, 1),
+                            done = lambda x,y: x.within(y, 1e-3)) 
 print("Answer from value_iteration in approximate_dynamic_progamming.py")
-print(next(value_itr))
+print(value_itr)
 
-value_finite_itr = value_iteration_finite(wage_mdp, discount_factor, Tabular())
-for i in range(10000):
-    next(value_finite_itr)
+# Use the value iteration finite function from approximate_dynamic_programming.py
+value_finite_itr = converged(value_iteration_finite(wage_mdp, discount_factor, vf_approx), 
+                                done = lambda x,y: x.within(y, 1e-3)) 
 print("Answer from value_iteration_finite in approximate_dynamic_progamming.py")
-print(next(value_finite_itr))
+print(value_finite_itr)
 
+#### My approximate policy iteration ####
 # Helper function to set initial policy
-def accept_all_policy(s: S) -> A:
-        return "accept_all"
+def pick_random_policy(mdp: FiniteMarkovDecisionProcess[S, A]) -> DeterministicPolicy[S, A]:
+        def pick_action(s: S) -> A:
+            a = list(mdp.actions(NonTerminal(s)))[0]
+            return a
+        return DeterministicPolicy(pick_action)
+
 # Helper function to obtain the greedy policy
 def greedy_policy_from_vf_approx(
     mdp: FiniteMarkovDecisionProcess[S, A],
@@ -126,13 +131,10 @@ def approximate_policy_iteration(
 
         vf_approx, pi = vf_policy
         mrp: MarkovRewardProcess[S] = mdp.apply_policy(pi)
-        policy_vf_approx_itr = evaluate_mrp(mrp, gamma, vf_approx, 
+        policy_vf_approx_itr = converged(evaluate_mrp(mrp, gamma, vf_approx, 
                                         non_terminal_states_distribution = nt_states_distribution,
-                                        num_state_samples=num_state_samples)
-        # Better way to do this would be iterate until convergence
-        for _ in range(15):
-            next(policy_vf_approx_itr)
-        policy_vf_approx = next(policy_vf_approx_itr)
+                                        num_state_samples=num_state_samples), lambda x,y: x.within(y, 1e-3))
+        policy_vf_approx = policy_vf_approx_itr
         
         improved_pi: DeterministicPolicy[S, A] = greedy_policy_from_vf_approx(
             mdp,
@@ -142,17 +144,15 @@ def approximate_policy_iteration(
 
         return policy_vf_approx, improved_pi
 
-    v_0 = Tabular()
-    pi_0: DeterministicPolicy[S, A] = DeterministicPolicy(accept_all_policy)
+    v_0 = Dynamic({s: 0.0 for s in mdp.non_terminal_states})
+    pi_0: DeterministicPolicy[S, A] = pick_random_policy(mdp, )
     return iterate(update, (v_0, pi_0))
 
 
-approx_policy_itr = approximate_policy_iteration(wage_mdp, discount_factor, 
-                Categorical({s: 1 for s in wage_mdp.non_terminal_states}), 1)
-for _ in range(100):
-    next(approx_policy_itr)
+approx_policy_itr = converged(approximate_policy_iteration(wage_mdp, discount_factor, 
+                Categorical({s: 1 for s in wage_mdp.non_terminal_states}), 1), lambda x,y: x[0].within(y[0], 1e-3))
 print("Answer from custom approximate policy iteration")
-approx_value_vec, optimal_policy_func = next(approx_policy_itr)
+approx_value_vec, optimal_policy_func = approx_policy_itr
 print(approx_value_vec)
 for s in wage_mdp.non_terminal_states:
     print(s)

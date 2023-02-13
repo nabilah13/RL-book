@@ -61,12 +61,7 @@ for i in range(5):
 feature_functions = [lambda state: state.state]
 linear_function_approx = LinearFunctionApprox.create(feature_functions=feature_functions)
 
-mdp_f0_mu_triples: Sequence[Tuple[
-    MarkovDecisionProcess[float, bool],
-    ValueFunctionApprox[float],
-    SampledDistribution[NonTerminal[float]]
-]] = [(ooe_mdps[i], linear_function_approx, payoff_dists[i]) for i in range(5)]
-
+mdp_f0_mu_triples = [(ooe_mdps[i], linear_function_approx, payoff_dists[i]) for i in range(5)]
 num_state_samples: int = 5000
 error_tolerance: float = 1e-3
 
@@ -77,7 +72,7 @@ vf_iter = back_opt_vf_and_policy(
             error_tolerance=error_tolerance
         )
 
-price_to_investigate = 100.5
+price_to_investigate = 105.0
 
 for time_step, (option_value, policy) in enumerate(vf_iter):
     print(f"At Time {time_step:d} and price {price_to_investigate}:")

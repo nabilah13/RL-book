@@ -1,3 +1,8 @@
+import sys
+  
+# adding src to the system path
+sys.path.insert(0, '/Users/nabilahmed/RL-book/')
+
 import numpy as np
 import matplotlib.pyplot as plt
 import random
@@ -145,7 +150,7 @@ def tabular_td_prediction(
 
 discount_factor = 0.4
 state_to_plot = 10
-num_steps_to_plot = 1250
+num_steps_to_plot = 800
 
 # Create a simple FiniiteMarkovRewardProcess
 transition_matrix = np.zeros((25,25))
@@ -244,8 +249,22 @@ plt.ylabel('V(s)')
 plt.title('Convergence for Simple MarkovRewardProcess (s = 10)')
 plt.legend(loc='lower right')
 
-#plt.savefig("assignment6/convergence_rates.png")
-#plt.clf()
+plt.savefig("assignment6/convergence_rates.png")
+plt.clf()
+
+
+from rl.chapter10.prediction_utils import compare_td_and_td_lambda_and_mc
+
+compare_td_and_td_lambda_and_mc(
+    fmrp=sl_game_reward,
+    gamma=0.8,
+    mc_episode_length_tol=1e-6,
+    num_episodes=700,
+    learning_rates=[(0.01, 1e8, 0.5), (0.05, 1e8, 0.5)],
+    initial_vf_dict={s: 0.5 for s in sl_game_reward.non_terminal_states},
+    plot_batch=7,
+    plot_start=0
+)
 
 
 

@@ -253,7 +253,162 @@ plt.savefig("assignment6/convergence_rates.png")
 plt.clf()
 
 
-from rl.chapter10.prediction_utils import compare_td_and_td_lambda_and_mc
+from rl.chapter10.prediction_utils import (mc_finite_prediction_learning_rate, 
+                                           td_finite_prediction_learning_rate,
+                                           td_lambda_finite_prediction_learning_rate)
+from rl.returns import returns
+from rl.distribution import Choose
+from math import sqrt
+
+def compare_td_and_td_lambda_and_mc(
+    fmrp: FiniteMarkovRewardProcess[S],
+    gamma: float,
+    mc_episode_length_tol: float,
+    num_episodes: int,
+    learning_rates: Sequence[Tuple[float, float, float]],
+    initial_vf_dict: Mapping[NonTerminal[S], float],
+    plot_batch: int,
+    plot_start: int,
+    lambda_list: Sequence[float],
+    lambda_plotmarkers: Sequence[str]
+) -> None:
+    true_vf: np.ndarray = fmrp.get_value_function_vec(gamma)
+    states: Sequence[NonTerminal[S]] = fmrp.non_terminal_states
+    colors: Sequence[str] = ['r', 'y', 'm', 'g', 'c', 'k', 'b']
+
+    import matplotlib.pyplot as plt
+    plt.figure(figsize=(11, 7))
+
+    for k, (init_lr, half_life, exponent) in enumerate(learning_rates):
+        mc_funcs_it: Iterator[ValueFunctionApprox[S]] = \
+            mc_finite_prediction_learning_rate(
+                fmrp=fmrp,
+                gamma=gamma,
+                episode_length_tolerance=mc_episode_length_tol,
+                initial_learning_rate=init_lr,
+                half_life=half_life,
+                exponent=exponent,
+                initial_vf_dict=initial_vf_dict
+            )
+        mc_errors = []
+        batch_mc_errs = []
+        for i, mc_f in enumerate(itertools.islice(mc_funcs_it, num_episodes)):
+            batch_mc_errs.append(sqrt(sum(
+                (mc_f(s) - true_vf[j]) ** 2 for j, s in enumerate(states)
+            ) / len(states)))
+            if i % plot_batch == plot_batch - 1:
+                mc_errors.append(sum(batch_mc_errs) / plot_batch)
+                batch_mc_errs = []
+        mc_plot = mc_errors[plot_start:]
+        label = f"MC InitRate={init_lr:.3f},HalfLife" + \
+            f"={half_life:.0f},Exp={exponent:.1f}"
+        plt.plot(
+            range(len(mc_plot)),
+            mc_plot,
+            color=colors[k],
+            linestyle='-',
+            label=label
+        )
+
+    sample_episodes: int = 1000
+    td_episode_length: int = int(round(sum(
+        len(list(returns(
+            trace=fmrp.simulate_reward(Choose(states)),
+            γ=gamma,
+            tolerance=mc_episode_length_tol
+        ))) for _ in range(sample_episodes)
+    ) / sample_episodes))
+
+    for k, (init_lr, half_life, exponent) in enumerate(learning_rates):
+        td_funcs_it: Iterator[ValueFunctionApprox[S]] = \
+            td_finite_prediction_learning_rate(
+                fmrp=fmrp,
+                gamma=gamma,
+                episode_length=td_episode_length,
+                initial_learning_rate=init_lr,
+                half_life=half_life,
+                exponent=exponent,
+                initial_vf_dict=initial_vf_dict
+            )
+        td_errors = []
+        transitions_batch = plot_batch * td_episode_length
+        batch_td_errs = []
+
+        for i, td_f in enumerate(
+                itertools.islice(td_funcs_it, num_episodes * td_episode_length)
+        ):
+            batch_td_errs.append(sqrt(sum(
+                (td_f(s) - true_vf[j]) ** 2 for j, s in enumerate(states)
+            ) / len(states)))
+            if i % transitions_batch == transitions_batch - 1:
+                td_errors.append(sum(batch_td_errs) / transitions_batch)
+                batch_td_errs = []
+        td_plot = td_errors[plot_start:]
+        label = f"TD InitRate={init_lr:.3f},HalfLife" + \
+            f"={half_life:.0f},Exp={exponent:.1f}"
+        plt.plot(
+            range(len(td_plot)),
+            td_plot,
+            color=colors[k],
+            linestyle='--',
+            label=label
+        )
+    
+
+    # loop thru lambda values
+    for z, l in enumerate(lambda_list):
+        for k, (init_lr, half_life, exponent) in enumerate(learning_rates):
+            td_lambda_funcs_it: Iterator[ValueFunctionApprox[S]] = \
+                td_lambda_finite_prediction_learning_rate(
+                    fmrp=fmrp,
+                    gamma=gamma,
+                    lambd=l,
+                    episode_length=td_episode_length,
+                    initial_learning_rate=init_lr,
+                    half_life=half_life,
+                    exponent=exponent,
+                    initial_vf_dict=initial_vf_dict
+                )
+            td_lambda_errors = []
+            transitions_batch = plot_batch * td_episode_length
+            batch_td_lambda_errs = []
+
+            for i, td_lambda_f in enumerate(
+                    itertools.islice(
+                        td_lambda_funcs_it,
+                        num_episodes * td_episode_length
+                    )
+            ):
+                batch_td_lambda_errs.append(sqrt(sum(
+                    (td_lambda_f(s) - true_vf[j]) ** 2 for j, s in enumerate(states)
+                ) / len(states)))
+                if i % transitions_batch == transitions_batch - 1:
+                    td_lambda_errors.append(
+                        sum(batch_td_lambda_errs) / transitions_batch
+                    )
+                    batch_td_lambda_errs = []
+            td_lambda_plot = td_lambda_errors[plot_start:]
+            label = f"TD Lambda={l} InitRate={init_lr:.3f},HalfLife" + \
+                f"={half_life:.0f},Exp={exponent:.1f}"
+            plt.plot(
+                range(len(td_lambda_plot)),
+                td_lambda_plot,
+                color=colors[k],
+                linestyle=":",
+                label=label,
+                marker = lambda_plotmarkers[z],
+                markersize = 3
+            )
+
+    plt.xlabel("Episode Batches", fontsize=20)
+    plt.ylabel("Value Function RMSE", fontsize=20)
+    plt.title(
+        "RMSE of MC, TD, and TD(lambda) as function of episode batches",
+        fontsize=25
+    )
+    plt.grid(True)
+    plt.legend(fontsize=10, loc='upper right')
+    plt.savefig("assignment6/convergence_rates_rmse.png")
 
 compare_td_and_td_lambda_and_mc(
     fmrp=sl_game_reward,
@@ -263,7 +418,9 @@ compare_td_and_td_lambda_and_mc(
     learning_rates=[(0.01, 1e8, 0.5), (0.05, 1e8, 0.5)],
     initial_vf_dict={s: 0.5 for s in sl_game_reward.non_terminal_states},
     plot_batch=7,
-    plot_start=0
+    plot_start=0,
+    lambda_list=[0.25, 0.5, 0.75],
+    lambda_plotmarkers = ["o", "^", "s"]
 )
 
 

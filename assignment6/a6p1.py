@@ -55,8 +55,8 @@ def td_lambda_tabular(
             count_dict.setdefault(state, 0)
             count_dict[state] += 1
             # Perform the Tabular TD(lambda) update
-            value_func_dict.setdefault(state, 1)
-            value_func_dict.setdefault(next_state, 1)
+            value_func_dict.setdefault(state, 0)
+            value_func_dict.setdefault(next_state, 0)
             value_func_dict[state] += ((1/count_dict[state]) * eligibility_trace_dict[state] * 
                                         (reward + discount_factor * value_func_dict[next_state] - 
                                          value_func_dict[state]))
